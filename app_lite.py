@@ -5,7 +5,11 @@ import pickle
 import time
 from PIL import Image
 import io
-import pyttsx3
+try:
+    import pyttsx3
+    SPEECH_AVAILABLE = True
+except ImportError:
+    SPEECH_AVAILABLE = False
 import threading
 
 # Sabit değişkenler
@@ -28,6 +32,8 @@ EMOTION_LABELS_TR = {
 
 # Ses motoru başlatma
 def initialize_speech_engine():
+    if not SPEECH_AVAILABLE:
+        return None
     try:
         engine = pyttsx3.init()
         engine.setProperty('rate', 150)  # Konuşma hızı
@@ -157,8 +163,10 @@ def main():
     
     # Ses motorunu başlat
     speech_engine = initialize_speech_engine()
-    if speech_engine is None:
-        st.warning("Sesli bildirim özelliği kullanılamıyor. Uygulama sessiz modda çalışacak.")
+    if speech_engine is None and SPEECH_AVAILABLE:
+        st.info("Sesli bildirim özelliği bu platformda kullanılamıyor.")
+    elif not SPEECH_AVAILABLE:
+        st.info("Ses kütüphanesi yüklü değil. Uygulama sessiz modda çalışacak.")
     
     # Sekme seçenekleri
     tab1, tab2 = st.tabs(["📷 Camera", "🖼️ Upload Photo"])
