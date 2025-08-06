@@ -177,6 +177,8 @@ def main():
         # Kamera kontrolü için session state kullan
         if 'camera_on' not in st.session_state:
             st.session_state.camera_on = False
+        if 'frame_count' not in st.session_state:
+            st.session_state.frame_count = 0
         
         # Sesli bildirim seçeneği
         enable_voice = st.checkbox("Enable voice feedback", value=True)
@@ -186,93 +188,68 @@ def main():
         
         with col1:
             if not st.session_state.camera_on:
-                start_button = st.button("Start Camera", type="primary", use_container_width=True)
+                start_button = st.button("Start Camera", type="primary", use_container_width=True, key="start_btn")
                 if start_button:
                     st.session_state.camera_on = True
+                    st.session_state.frame_count = 0
                     st.rerun()
         
         with col2:
             if st.session_state.camera_on:
-                stop_button = st.button("Stop Camera", type="secondary", use_container_width=True)
+                stop_button = st.button("Stop Camera", type="secondary", use_container_width=True, key="stop_btn")
                 if stop_button:
                     st.session_state.camera_on = False
                     st.rerun()
         
         # Kamera görüntüsü için yer tutucu
-        camera_placeholder = st.empty()
-        result_placeholder = st.empty()
+        camera_container = st.container()
+        result_container = st.container()
         
         # Kamera açıksa görüntü akışını başlat
         if st.session_state.camera_on:
-            # Kamera akışı
-            cap = cv2.VideoCapture(0)
+            with camera_container:
+                st.info("📹 Camera is active. Click 'Stop Camera' to exit.")
+                
+                # Placeholder'ları container içinde oluştur
+                camera_placeholder = st.empty()
+                
+            with result_container:
+                result_placeholder = st.empty()
             
-            if not cap.isOpened():
-                st.error("Could not open camera!")
-                st.session_state.camera_on = False
-            else:
-                st.info("Camera is active. Click 'Stop Camera' to exit.")
+            # Webcam widget kullanımı (daha stabil)
+            try:
+                # Basit kamera görüntüsü alma
+                img_file_buffer = st.camera_input("Take a picture for emotion analysis", key="camera_input")
                 
-                # Son bildirilen duygu ve zaman
-                last_emotion = None
-                last_time = time.time() - 3  # İlk duyguyu hemen bildirmek için
-                
-                while st.session_state.camera_on:
-                    ret, frame = cap.read()
-                    if not ret:
-                        st.error("Could not get camera frame!")
-                        break
-                    
-                    # Görüntüyü RGB formatına dönüştür
-                    frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-                    
-                    # Görüntüyü işle - Aynı duyguyu sürekli seslendirmemek için zaman kontrolü
-                    current_time = time.time()
-                    should_speak = enable_voice and (current_time - last_time) > 2  # En az 2 saniye geçtiyse seslendir
-                    
+                if img_file_buffer is not None:
+                    # Görüntüyü işle
+                    image = Image.open(img_file_buffer)
                     result_img, results = process_image(
-                        Image.fromarray(frame_rgb), 
+                        image, 
                         face_classifier, 
                         emotion_model,
-                        speech_engine if should_speak else None,
-                        should_speak
+                        speech_engine if enable_voice else None,
+                        enable_voice
                     )
                     
-                    # Duygu değişimini takip et
-                    if results and should_speak:
-                        current_emotion = results[0]["emotion"]
-                        if current_emotion != last_emotion:
-                            last_emotion = current_emotion
-                            last_time = current_time
+                    # Sonuçları göster
+                    with camera_container:
+                        st.image(result_img, caption="Analysis Result", width=640)
                     
-                    # Görüntüyü göster
-                    camera_placeholder.image(result_img, channels="RGB", width=640)
-                    
-                    # Duygu sonuçlarını göster
-                    if results:
-                        emotions_count = {}
-                        for result in results:
-                            emotion = result["emotion"]
-                            if emotion in emotions_count:
-                                emotions_count[emotion] += 1
-                            else:
-                                emotions_count[emotion] = 1
-                        
-                        # Sonuçları göster
-                        result_text = "Detected emotions:\n"
-                        for emotion, count in emotions_count.items():
-                            result_text += f"- {emotion}: {count} person(s)\n"
-                        
-                        result_placeholder.text(result_text)
-                    else:
-                        result_placeholder.text("No faces detected.")
-                    
-                    time.sleep(0.1)  # FPS kontrolü
-                
-                # Kaynakları serbest bırak
-                cap.release()
+                    with result_container:
+                        if results:
+                            st.success("✅ Faces detected!")
+                            for i, result in enumerate(results):
+                                st.write(f"Face {i+1}: **{result['emotion']}** ({result['confidence']:.1%} confidence)")
+                        else:
+                            st.warning("No faces detected in the image.")
+                            
+            except Exception as e:
+                st.error(f"Camera error: {str(e)}")
+                st.session_state.camera_on = False
         else:
-            camera_placeholder.info("Click 'Start Camera' to activate emotion recognition.")
+            with camera_container:
+                st.info("📸 Click 'Start Camera' to activate emotion recognition.")
     
     with tab2:
         st.header("Emotion Recognition with Photo")
