@@ -1,0 +1,59 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Virtual Environment
+venv/
+ENV/
+env/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Jupyter Notebook
+.ipynb_checkpoints
+
+# Model dosyaları (büyük dosyalar)
+*.h5
+*.hdf5
+# *.pkl  # SVM modelimizi dahil ediyoruz
+*.pth
+
+# Eğitim geçmişi
+training_history.npy
+training_history.png
+
+# Büyük veri setleri
+train/
+test/
+*.zip
+*.rar
+
+# Diğer
+.DS_Store
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local 
